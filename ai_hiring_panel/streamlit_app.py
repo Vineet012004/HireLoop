@@ -1,12 +1,17 @@
 """
-AI Hiring Panel — Streamlit Frontend
-=====================================
+HireLoop — Streamlit Frontend
+==============================
 Talks to the FastAPI backend at API_BASE_URL.
 """
+import os
 import streamlit as st
 import requests
 
-API_BASE_URL = "http://localhost:8000/api/v1"
+# Read backend URL from Streamlit secrets (cloud) or env var (local)
+try:
+    API_BASE_URL = st.secrets["API_BASE_URL"]
+except Exception:
+    API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
 
 st.set_page_config(
     page_title="HireLoop",
