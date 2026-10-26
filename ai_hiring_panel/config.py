@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     database_url: str = "sqlite:///./hiring_panel.db"
     secret_key: str = "change-me-in-production"
-    groq_model: str = "llama3-8b-8192"
+    groq_model: str = "openai/gpt-oss-20b"
     max_questions_per_round: int = 5
 
     class Config:
