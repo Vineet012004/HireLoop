@@ -1,4 +1,5 @@
 """FastAPI routes — all HTTP endpoints for the hiring panel backend."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -8,6 +9,8 @@ from database.models import Report
 from resume.parser import parse_resume
 from resume.analyzer import analyze_resume
 from services import interview_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -53,9 +56,27 @@ async def upload_resume(
         resume_text = parse_resume(file_bytes, file.filename or "resume.pdf")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to parse resume: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Resume parsing failed: {exc}")
 
-    analysis = analyze_resume(resume_text)
-    candidate = interview_service.create_candidate(db, analysis, resume_text, file.filename or "")
+    try:
+        analysis = analyze_resume(resume_text)
+    except Exception as exc:
+        logger.exception("Failed to analyse resume: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Resume analysis failed: {exc}. "
+                "Check that GROQ_API_KEY is set correctly in your environment."
+            ),
+        )
+
+    try:
+        candidate = interview_service.create_candidate(db, analysis, resume_text, file.filename or "")
+    except Exception as exc:
+        logger.exception("Failed to save candidate: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Database error while saving candidate: {exc}")
 
     return {
         "candidate_id": candidate.id,
@@ -78,6 +99,9 @@ def create_session(payload: StartSessionRequest, db: Session = Depends(get_db)):
         session = interview_service.create_session(db, payload.candidate_id, payload.agent_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to create session: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {exc}")
 
     return {"session_id": session.id, "agent_type": session.agent_type, "status": session.status}
 
@@ -89,6 +113,9 @@ def start_session(session_id: int, db: Session = Depends(get_db)):
         opening = interview_service.start_session(db, session_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to start session %d: %s", session_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to start session: {exc}")
 
     return {"session_id": session_id, "message": opening}
 
@@ -103,6 +130,9 @@ def submit_answer(session_id: int, payload: AnswerRequest, db: Session = Depends
         reply = interview_service.send_answer(db, session_id, payload.answer)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to process answer for session %d: %s", session_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to process answer: {exc}")
 
     return {"session_id": session_id, "message": reply}
 
@@ -114,6 +144,9 @@ def finish_session(session_id: int, db: Session = Depends(get_db)):
         scores = interview_service.finish_session(db, session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to finish session %d: %s", session_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to finish session: {exc}")
 
     return {"session_id": session_id, "report": scores}
 

@@ -36,8 +36,12 @@ def api_post(endpoint: str, json: dict | None = None, files=None) -> dict:
         st.error("❌ Cannot connect to the backend. Make sure the FastAPI server is running on port 8000.")
         st.stop()
     except requests.exceptions.HTTPError as exc:
-        detail = exc.response.json().get("detail", str(exc)) if exc.response else str(exc)
-        st.error(f"API error: {detail}")
+        try:
+            body = exc.response.json()
+            detail = body.get("detail", str(exc))
+        except Exception:
+            detail = exc.response.text if exc.response else str(exc)
+        st.error(f"API error: {exc.response.status_code} {exc.response.reason} — {detail}")
         st.stop()
 
 
@@ -50,8 +54,12 @@ def api_get(endpoint: str) -> dict:
         st.error("❌ Cannot connect to the backend. Make sure the FastAPI server is running on port 8000.")
         st.stop()
     except requests.exceptions.HTTPError as exc:
-        detail = exc.response.json().get("detail", str(exc)) if exc.response else str(exc)
-        st.error(f"API error: {detail}")
+        try:
+            body = exc.response.json()
+            detail = body.get("detail", str(exc))
+        except Exception:
+            detail = exc.response.text if exc.response else str(exc)
+        st.error(f"API error: {exc.response.status_code} {exc.response.reason} — {detail}")
         st.stop()
 
 
