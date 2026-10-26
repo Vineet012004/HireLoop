@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     database_url: str = "sqlite:///./hiring_panel.db"
     secret_key: str = "change-me-in-production"
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "llama3-8b-8192"
     max_questions_per_round: int = 5
 
     class Config:
